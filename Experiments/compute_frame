@@ -1,0 +1,51 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Jan 22 20:02:07 2019
+
+@author: keldine
+"""
+
+
+class calc_frame:
+    # Load libraries into engines
+    print ("Loading frame computation libraries into engines")
+    with dview.sync_imports():
+        import numpy # Data crunching
+        from scipy.optimize import nnls # for the frame computation
+    print ("Libraries successfully loaded into engines")
+    
+    def __init__(self,X):
+        self.X = X[:,1:]
+        
+    # Partitioning function
+    def partition(self,lst,n):
+        division = len(lst) / n
+        return [lst[round(division*i):round(division*(i + 1))] for i in range(n)]
+    
+    # Function to get indices from each partition
+    def frame_indices(self,Q,Range):
+        q = self.numpy.array([],dtype=self.numpy.int64)
+        for i in Range:
+            a, rnorm = self.nnls( Q, Q.T[i] )
+            ind = self.numpy.where( a > 0 )[0]
+            q = self.numpy.union1d(q,ind)
+        return q
+    # Function to generate frames
+    def frame_multicore(self, M=1000.0):
+        np.random.seed(10)
+        # initialization
+        eng_count = len(rc.ids)
+        n = self.X.shape[0]
+        q = np.array([],dtype=self.numpy.int64)
+        Q = np.vstack( ( self.X.T, M * np.ones(n) ) )
+        #Split the data into n where n is the number of available engines
+        Range = self.partition(range(n),eng_count)
+        list_Q = [Q]*eng_count
+        #Map the indices worl    
+        ind = dview.map(self.frame_indices,list_Q,Range)
+        ind = ind.get()
+        # Merge the results
+        ind = [y for x in ind for y in x]
+        q = np.union1d(q,ind)
+        return q
